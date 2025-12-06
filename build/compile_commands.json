@@ -1,0 +1,20 @@
+[
+{
+  "directory": "/home/alderson/Projects/Mine/spmc-queue/build",
+  "command": "/usr/lib/ccache/c++  -I/home/alderson/Projects/Mine/spmc-queue/include -std=gnu++20 -o CMakeFiles/spscqueue.dir/src/spsc_queue.cpp.o -c /home/alderson/Projects/Mine/spmc-queue/src/spsc_queue.cpp",
+  "file": "/home/alderson/Projects/Mine/spmc-queue/src/spsc_queue.cpp",
+  "output": "CMakeFiles/spscqueue.dir/src/spsc_queue.cpp.o"
+},
+{
+  "directory": "/home/alderson/Projects/Mine/spmc-queue/build",
+  "command": "/usr/lib/ccache/c++ -DBENCHMARK_STATIC_DEFINE -I/home/alderson/Projects/Mine/spmc-queue/include -std=gnu++20 -o CMakeFiles/spsc_bench.dir/benchmark/main.cpp.o -c /home/alderson/Projects/Mine/spmc-queue/benchmark/main.cpp",
+  "file": "/home/alderson/Projects/Mine/spmc-queue/benchmark/main.cpp",
+  "output": "CMakeFiles/spsc_bench.dir/benchmark/main.cpp.o"
+},
+{
+  "directory": "/home/alderson/Projects/Mine/spmc-queue/build",
+  "command": "/usr/lib/ccache/c++ -DBENCHMARK_STATIC_DEFINE -I/home/alderson/Projects/Mine/spmc-queue/include -std=gnu++20 -o CMakeFiles/spsc_bench.dir/benchmark/bm_spsc.cpp.o -c /home/alderson/Projects/Mine/spmc-queue/benchmark/bm_spsc.cpp",
+  "file": "/home/alderson/Projects/Mine/spmc-queue/benchmark/bm_spsc.cpp",
+  "output": "CMakeFiles/spsc_bench.dir/benchmark/bm_spsc.cpp.o"
+}
+]

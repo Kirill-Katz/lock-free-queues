@@ -1,0 +1,1 @@
+/usr/lib/ccache/c++ CMakeFiles/spmc_bench.dir/benchmark/main.cpp.o CMakeFiles/spmc_bench.dir/benchmark/bm_spsc.cpp.o -o spmc_bench  libspscqueue.a /usr/local/lib/libbenchmark.a -lrt 

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libspscqueue.a CMakeFiles/spscqueue.dir/src/spsc_queue.cpp.o
+/usr/bin/ranlib libspscqueue.a

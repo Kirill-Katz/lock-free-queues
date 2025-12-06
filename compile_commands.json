@@ -1,0 +1,43 @@
+[
+  {
+    "arguments": [
+      "/usr/lib/ccache/c++",
+      "-I/home/alderson/Projects/Mine/spmc-queue/include",
+      "-std=gnu++20",
+      "-c",
+      "-I",
+      "/usr/local/cuda/include",
+      "-I",
+      "/usr/local/cuda/include",
+      "-I",
+      ".",
+      "-o",
+      "CMakeFiles/spscqueue.dir/src/spsc_queue.cpp.o",
+      "/home/alderson/Projects/Mine/spmc-queue/src/spsc_queue.cpp"
+    ],
+    "directory": "/home/alderson/Projects/Mine/spmc-queue/build",
+    "file": "/home/alderson/Projects/Mine/spmc-queue/src/spsc_queue.cpp",
+    "output": "/home/alderson/Projects/Mine/spmc-queue/build/CMakeFiles/spscqueue.dir/src/spsc_queue.cpp.o"
+  },
+  {
+    "arguments": [
+      "/usr/lib/ccache/c++",
+      "-DBENCHMARK_STATIC_DEFINE",
+      "-I/home/alderson/Projects/Mine/spmc-queue/include",
+      "-std=gnu++20",
+      "-c",
+      "-I",
+      "/usr/local/cuda/include",
+      "-I",
+      "/usr/local/cuda/include",
+      "-I",
+      ".",
+      "-o",
+      "CMakeFiles/spmc_bench.dir/benchmark/bm_spsc.cpp.o",
+      "/home/alderson/Projects/Mine/spmc-queue/benchmark/bm_spsc.cpp"
+    ],
+    "directory": "/home/alderson/Projects/Mine/spmc-queue/build",
+    "file": "/home/alderson/Projects/Mine/spmc-queue/benchmark/bm_spsc.cpp",
+    "output": "/home/alderson/Projects/Mine/spmc-queue/build/CMakeFiles/spmc_bench.dir/benchmark/bm_spsc.cpp.o"
+  }
+]
