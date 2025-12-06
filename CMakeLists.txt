@@ -14,6 +14,7 @@ add_executable(spsc_bench
     benchmark/main.cpp
     benchmark/bm_spsc.cpp
 )
+target_compile_options(spsc_bench PRIVATE -g -fno-omit-frame-pointer)
 target_link_libraries(spsc_bench PRIVATE spscqueue benchmark::benchmark)
 
 add_executable(moody_bench

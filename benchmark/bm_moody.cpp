@@ -1,54 +1,33 @@
 #include <benchmark/benchmark.h>
 #include "moodycammel_queue.hpp"
-#include <vector>
 #include <cstddef>
+#include <memory.h>
 
-static void BM_MCQueueWrite(benchmark::State& state) {
+static void BM_MCQueueWriteRead(benchmark::State& state) {
     const size_t payload = state.range(0);
 
-    std::vector<std::byte> data(payload);
-    benchmark::DoNotOptimize(data);
+    auto blob = new std::byte[payload];
+    memset(blob, 0, payload);
 
-    moodycamel::ReaderWriterQueue<void*> q(1024);
-    benchmark::DoNotOptimize(q);
-
-    void* ptr = data.data();
+    moodycamel::ReaderWriterQueue<decltype(blob)> q(1024);
 
     for (auto _ : state) {
-        bool ok = q.try_enqueue(ptr);
+        bool ok1 = q.try_enqueue(blob);
+        benchmark::DoNotOptimize(ok1);
+
+        bool ok2 = q.try_dequeue(blob);
+        benchmark::DoNotOptimize(ok2);
+
         benchmark::ClobberMemory();
     }
 
-    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * payload);
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations()) * payload // write + read
+    );
 }
 
-static void BM_MCQueueRead(benchmark::State& state) {
-    const size_t payload = state.range(0);
 
-    std::vector<std::byte> data(payload);
-    benchmark::DoNotOptimize(data);
-
-    moodycamel::ReaderWriterQueue<void*> q(1024);
-    benchmark::DoNotOptimize(q);
-
-    void* ptr = data.data();
-
-    for (auto _ : state) {
-        bool ok = q.try_enqueue(ptr);
-
-        void* out;
-        bool ok2 = q.try_dequeue(out);
-        benchmark::ClobberMemory();
-    }
-
-    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * payload);
-}
-
-BENCHMARK(BM_MCQueueWrite)
-    ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)
-    ->ReportAggregatesOnly(true);
-
-BENCHMARK(BM_MCQueueRead)
-    ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)
+BENCHMARK(BM_MCQueueWriteRead)
+    ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)->Arg(8096)
     ->ReportAggregatesOnly(true);
 

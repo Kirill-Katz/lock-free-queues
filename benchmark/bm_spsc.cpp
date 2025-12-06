@@ -1,10 +1,10 @@
 #include <benchmark/benchmark.h>
 #include "spsc_queue.hpp"
 
-static void BM_QueueWrite(benchmark::State& state) {
+static void BM_QueueWriteRead(benchmark::State& state) {
     const size_t payload = state.range(0);
 
-    std::vector<std::byte> data(payload);
+    std::vector<std::byte> data(payload, std::byte(10));
     benchmark::DoNotOptimize(data);
 
     SPSCQueue q;
@@ -13,22 +13,6 @@ static void BM_QueueWrite(benchmark::State& state) {
     for (auto _ : state) {
         q.write(std::span<const std::byte>(data.data(), data.size()));
         benchmark::ClobberMemory();
-    }
-
-    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * payload);
-}
-
-static void BM_QueueRead(benchmark::State& state) {
-    const size_t payload = state.range(0);
-
-    std::vector<std::byte> data(payload);
-    benchmark::DoNotOptimize(data);
-
-    SPSCQueue q;
-    benchmark::DoNotOptimize(q);
-
-    for (auto _ : state) {
-        q.write(std::span<const std::byte>(data.data(), data.size()));
 
         auto view = q.read(data.size());
         benchmark::ClobberMemory();
@@ -38,12 +22,9 @@ static void BM_QueueRead(benchmark::State& state) {
 }
 
 
-BENCHMARK(BM_QueueRead)
-    ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)
+BENCHMARK(BM_QueueWriteRead)
+    ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)->Arg(8096)
     ->ReportAggregatesOnly(true);
 
-BENCHMARK(BM_QueueWrite)
-    ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)
-    ->ReportAggregatesOnly(true);
 
 
