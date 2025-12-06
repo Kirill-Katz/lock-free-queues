@@ -1,5 +1,4 @@
 #include <iostream>
-#include "spmc_queue.hpp"
 
 // message of 73 bytes
 // queue is 8MB

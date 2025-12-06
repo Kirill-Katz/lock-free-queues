@@ -7,9 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(benchmark REQUIRED)
 
-add_library(spscqueue
-    src/spsc_queue.cpp
-)
+add_library(spscqueue src/spsc_queue.cpp)
 target_include_directories(spscqueue PUBLIC include)
 
 add_executable(spsc_bench
@@ -17,3 +15,10 @@ add_executable(spsc_bench
     benchmark/bm_spsc.cpp
 )
 target_link_libraries(spsc_bench PRIVATE spscqueue benchmark::benchmark)
+
+add_executable(moody_bench
+    benchmark/main.cpp
+    benchmark/bm_moody.cpp
+)
+target_include_directories(moody_bench PUBLIC include)
+target_link_libraries(moody_bench PRIVATE spscqueue benchmark::benchmark)
