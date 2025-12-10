@@ -22,6 +22,7 @@ public:
     SPSCQueue& operator=(SPSCQueue&& q) = delete;
 
     bool try_pop(T& dst);
+    bool try_push(const T& data);
     bool try_push(T&& data);
     size_t available(size_t writer, size_t reader) const;
 
@@ -40,10 +41,9 @@ size_t SPSCQueue<T>::available(size_t writer, size_t reader) const {
 }
 
 template<typename T>
-bool SPSCQueue<T>::try_push(T&& data) {
-    using U = std::decay_t<T>;
-    assert(sizeof(U) <= 64);
-    assert(alignof(U) <= alignof(Slot));
+bool SPSCQueue<T>::try_push(const T& data) {
+    assert(sizeof(T) <= 64);
+    assert(alignof(T) <= alignof(Slot));
 
     size_t writer = writer_.load(std::memory_order_acquire);
     size_t reader = reader_.load(std::memory_order_acquire);
@@ -55,10 +55,35 @@ bool SPSCQueue<T>::try_push(T&& data) {
     }
 
     Slot& s = buffer_[writer];
-    if constexpr (std::is_trivially_copyable_v<U>) {
-        std::memcpy(s.storage, &data, sizeof(U));
+    if constexpr (std::is_trivially_copyable_v<T>) {
+        std::memcpy(s.storage, &data, sizeof(T));
     } else {
-        new (s.storage) U(std::forward<T>(data));
+        new (s.storage) T(data);
+    }
+
+    writer_.store((writer + 1) & (bufferSizeSlots_ - 1), std::memory_order_release);
+    return true;
+}
+
+template<typename T>
+bool SPSCQueue<T>::try_push(T&& data) {
+    static_assert(sizeof(T) <= 64);
+    static_assert(alignof(T) <= alignof(Slot));
+
+    size_t writer = writer_.load(std::memory_order_acquire);
+    size_t reader = reader_.load(std::memory_order_acquire);
+
+    size_t avail = available(writer, reader);
+    size_t freeSpace = bufferSizeSlots_ - 1 - avail;
+    if (freeSpace < 1) {
+        return false;
+    }
+
+    Slot& s = buffer_[writer];
+    if constexpr (std::is_trivially_copyable_v<T>) {
+        std::memcpy(s.storage, &data, sizeof(T));
+    } else {
+        new (s.storage) T(std::move(data));
     }
 
     writer_.store((writer + 1) & (bufferSizeSlots_ - 1), std::memory_order_release);
@@ -67,8 +92,8 @@ bool SPSCQueue<T>::try_push(T&& data) {
 
 template<typename T>
 bool SPSCQueue<T>::try_pop(T& dst) {
-    assert(sizeof(T) <= 64);
-    assert(alignof(T) <= alignof(Slot));
+    static_assert(sizeof(T) <= 64);
+    static_assert(alignof(T) <= alignof(Slot));
 
     size_t reader = reader_.load(std::memory_order_acquire);
     size_t writer = writer_.load(std::memory_order_acquire);
@@ -89,4 +114,5 @@ bool SPSCQueue<T>::try_pop(T& dst) {
     reader_.store((reader + 1) & (bufferSizeSlots_ - 1), std::memory_order_release);
     return true;
 }
+
 
