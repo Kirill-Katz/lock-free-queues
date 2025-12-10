@@ -24,10 +24,6 @@ static void BM_BufferWriteRead(benchmark::State& state) {
     state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * payload);
 }
 
-
 BENCHMARK(BM_BufferWriteRead)
     ->Arg(64)->Arg(256)->Arg(1024)->Arg(4096)->Arg(8096)
     ->ReportAggregatesOnly(true);
-
-
-
