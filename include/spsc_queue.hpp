@@ -24,11 +24,18 @@ public:
     bool try_pop(T& dst);
     bool try_push(const T& data);
     bool try_push(T&& data);
-    size_t available(size_t writer, size_t reader) const;
+    size_t used(size_t writer, size_t reader) const;
 
+    ~SPSCQueue() {
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            T tmp;
+            while (try_pop(tmp)) {}
+        }
+    }
 private:
     static constexpr size_t bufferSizeBytes_ = 8 * 1024 * 1024;
     static constexpr size_t bufferSizeSlots_ = bufferSizeBytes_ / 64;
+    static constexpr size_t wrapMask_ = bufferSizeSlots_ - 1;
     std::unique_ptr<Slot[]> buffer_ = std::make_unique<Slot[]>(bufferSizeSlots_);
 
     std::atomic<size_t> reader_ = 0;
@@ -36,8 +43,8 @@ private:
 };
 
 template<typename T>
-size_t SPSCQueue<T>::available(size_t writer, size_t reader) const {
-    return (writer - reader) & (bufferSizeSlots_ - 1);
+size_t SPSCQueue<T>::used(size_t writer, size_t reader) const {
+    return writer - reader;
 }
 
 template<typename T>
@@ -48,20 +55,20 @@ bool SPSCQueue<T>::try_push(const T& data) {
     size_t writer = writer_.load(std::memory_order_acquire);
     size_t reader = reader_.load(std::memory_order_acquire);
 
-    size_t avail = available(writer, reader);
+    size_t avail = used(writer, reader);
     size_t freeSpace = bufferSizeSlots_ - 1 - avail;
     if (freeSpace < 1) {
         return false;
     }
 
-    Slot& s = buffer_[writer];
+    Slot& s = buffer_[writer & wrapMask_];
     if constexpr (std::is_trivially_copyable_v<T>) {
         std::memcpy(s.storage, &data, sizeof(T));
     } else {
         new (s.storage) T(data);
     }
 
-    writer_.store((writer + 1) & (bufferSizeSlots_ - 1), std::memory_order_release);
+    writer_.store(writer + 1, std::memory_order_release);
     return true;
 }
 
@@ -73,20 +80,20 @@ bool SPSCQueue<T>::try_push(T&& data) {
     size_t writer = writer_.load(std::memory_order_acquire);
     size_t reader = reader_.load(std::memory_order_acquire);
 
-    size_t avail = available(writer, reader);
+    size_t avail = used(writer, reader);
     size_t freeSpace = bufferSizeSlots_ - 1 - avail;
     if (freeSpace < 1) {
         return false;
     }
 
-    Slot& s = buffer_[writer];
+    Slot& s = buffer_[writer & wrapMask_];
     if constexpr (std::is_trivially_copyable_v<T>) {
         std::memcpy(s.storage, &data, sizeof(T));
     } else {
         new (s.storage) T(std::move(data));
     }
 
-    writer_.store((writer + 1) & (bufferSizeSlots_ - 1), std::memory_order_release);
+    writer_.store(writer + 1, std::memory_order_release);
     return true;
 }
 
@@ -102,7 +109,7 @@ bool SPSCQueue<T>::try_pop(T& dst) {
         return false;
     }
 
-    Slot& s = buffer_[reader];
+    Slot& s = buffer_[reader & wrapMask_];
     if constexpr (std::is_trivially_copyable_v<T>) {
         std::memcpy(&dst, s.storage, sizeof(T));
     } else {
@@ -111,7 +118,7 @@ bool SPSCQueue<T>::try_pop(T& dst) {
         ptr->~T();
     }
 
-    reader_.store((reader + 1) & (bufferSizeSlots_ - 1), std::memory_order_release);
+    reader_.store(reader + 1, std::memory_order_release);
     return true;
 }
 
