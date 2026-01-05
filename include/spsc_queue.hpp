@@ -38,8 +38,8 @@ private:
     static constexpr size_t wrapMask_ = bufferSizeSlots_ - 1;
     std::unique_ptr<Slot[]> buffer_ = std::make_unique<Slot[]>(bufferSizeSlots_);
 
-    std::atomic<size_t> reader_ = 0;
-    std::atomic<size_t> writer_ = 0;
+    alignas(64) std::atomic<size_t> reader_ = 0;
+    alignas(64) std::atomic<size_t> writer_ = 0;
 };
 
 template<typename T>
@@ -49,8 +49,8 @@ size_t SPSCQueue<T>::used(size_t writer, size_t reader) const {
 
 template<typename T>
 bool SPSCQueue<T>::try_push(const T& data) {
-    assert(sizeof(T) <= 64);
-    assert(alignof(T) <= alignof(Slot));
+    static_assert(sizeof(T) <= 64);
+    static_assert(alignof(T) <= alignof(Slot));
 
     size_t writer = writer_.load(std::memory_order_acquire);
     size_t reader = reader_.load(std::memory_order_acquire);
