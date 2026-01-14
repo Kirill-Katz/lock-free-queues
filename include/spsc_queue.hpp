@@ -32,6 +32,7 @@ public:
             while (try_pop(tmp)) {}
         }
     }
+
 private:
     static constexpr size_t bufferSizeBytes_ = 8 * 1024 * 1024;
     static constexpr size_t bufferSizeSlots_ = bufferSizeBytes_ / 64;

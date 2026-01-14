@@ -25,6 +25,6 @@ public:
 private:
     static constexpr size_t bufferSize_ = 8 * 1024 * 1024;
     std::unique_ptr<std::byte[]> buffer_ = std::make_unique<std::byte[]>(bufferSize_);
-    std::atomic<size_t> reader_ = 0;
-    std::atomic<size_t> writer_ = 0;
+    alignas(64) std::atomic<size_t> reader_ = 0;
+    alignas(64) std::atomic<size_t> writer_ = 0;
 };
