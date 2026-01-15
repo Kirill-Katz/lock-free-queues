@@ -3,11 +3,6 @@
 #include <memory>
 #include <atomic>
 
-struct ReadView {
-    std::span<const std::byte> first;
-    std::span<const std::byte> second;
-};
-
 class SPSCBuffer {
 public:
     SPSCBuffer() {};
@@ -18,7 +13,7 @@ public:
     SPSCBuffer& operator=(const SPSCBuffer& q) = delete;
     SPSCBuffer& operator=(SPSCBuffer&& q) = delete;
 
-    void read(std::span<std::byte> dst, size_t n);
+    size_t read(std::span<std::byte> dst);
     bool try_write(std::span<const std::byte> data);
     size_t available(size_t writer, size_t reader) const;
 

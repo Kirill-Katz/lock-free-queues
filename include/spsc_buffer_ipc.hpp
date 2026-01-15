@@ -17,7 +17,7 @@ public:
     IPCSPSCBuffer& operator=(const IPCSPSCBuffer& q) = delete;
     IPCSPSCBuffer& operator=(IPCSPSCBuffer&& q) = delete;
 
-    void read(std::span<std::byte> dst, size_t n);
+    size_t read(std::span<std::byte> dst);
     bool try_write(std::span<const std::byte> data);
     size_t available(size_t writer, size_t reader) const;
 

@@ -11,16 +11,16 @@ size_t SPSCBuffer::available(size_t writer, size_t reader) const {
     }
 }
 
-void SPSCBuffer::read(std::span<std::byte> dst, size_t n) {
+size_t SPSCBuffer::read(std::span<std::byte> dst) {
     size_t reader = reader_.load(std::memory_order_acquire);
     size_t writer = writer_.load(std::memory_order_acquire);
 
     size_t avail = available(writer, reader);
     if (!avail) {
-        return;
+        return 0;
     }
 
-    n = std::min({ avail, n, dst.size_bytes() });
+    size_t n = std::min({ avail, dst.size_bytes() });
     size_t spaceToEnd = bufferSize_ - reader;
 
     if (n <= spaceToEnd) {
@@ -40,6 +40,8 @@ void SPSCBuffer::read(std::span<std::byte> dst, size_t n) {
 
         reader_.store(secondLen, std::memory_order_release);
     }
+
+    return n;
 }
 
 bool SPSCBuffer::try_write(std::span<const std::byte> data) {
