@@ -28,8 +28,14 @@ public:
 
     ~SPSCQueue() {
         if constexpr (!std::is_trivially_destructible_v<T>) {
-            T tmp;
-            while (try_pop(tmp)) {}
+            size_t reader = reader_.load(std::memory_order_relaxed);
+            size_t writer = writer_.load(std::memory_order_relaxed);
+            while (reader != writer) {
+                Slot& s = buffer_[reader & wrapMask_];
+                T* ptr = std::launder(reinterpret_cast<T*>(s.storage));
+                ptr->~T();
+                ++reader;
+            }
         }
     }
 
@@ -38,6 +44,7 @@ private:
     static constexpr size_t bufferSizeSlots_ = bufferSizeBytes_ / 64;
     static constexpr size_t wrapMask_ = bufferSizeSlots_ - 1;
     std::unique_ptr<Slot[]> buffer_ = std::make_unique<Slot[]>(bufferSizeSlots_);
+    static_assert((bufferSizeSlots_ & (bufferSizeSlots_ - 1)) == 0);
 
     alignas(64) std::atomic<size_t> reader_ = 0;
     alignas(64) std::atomic<size_t> writer_ = 0;
