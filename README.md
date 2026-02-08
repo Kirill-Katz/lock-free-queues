@@ -1,5 +1,5 @@
 # Lock free queues
-For now it includes 3 SPSC queues implementations.
+A set of lock free queues I use throughout my projects.
 ## SPSC Buffer
 A simple SPSC Ring Buffer the implementation of which can be found in `include/spsc_buffer.hpp` and `src/spsc_buffer.cpp
 `.
