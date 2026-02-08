@@ -19,20 +19,24 @@ struct BestLvlChange {
 };
 
 void strat_1(SPMCQueue<BestLvlChange>::Consumer& queue) {
-    BestLvlChange storage[64];
+    BestLvlChange best_lvl_change;
 
     while (true) {
-        size_t read = queue.consume({storage, 64});
-        std::cout << "Read: " << read << '\n';
+        bool read = queue.pop(best_lvl_change);
+        if (read) {
+            std::cout << "Read: " << read << '\n';
+        }
     }
 }
 
 void strat_2(SPMCQueue<BestLvlChange>::Consumer& queue) {
-    BestLvlChange storage[64];
+    BestLvlChange best_lvl_change;
 
     while (true) {
-        size_t read = queue.consume({storage, 64});
-        std::cout << "Read: " << read << '\n';
+        bool read = queue.pop(best_lvl_change);
+        if (read) {
+            std::cout << "Read: " << read << '\n';
+        }
     }
 }
 

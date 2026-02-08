@@ -2,11 +2,15 @@
 
 #include <atomic>
 #include <memory>
-#include <span>
 #include <iostream>
 #include <cstring>
 
 template<typename T>
+concept QueueMsg =
+    std::is_trivially_copyable_v<T> &&
+    std::is_trivially_destructible_v<T>;
+
+template<QueueMsg T>
 class SPMCQueue {
 public:
     SPMCQueue() {};
@@ -16,9 +20,14 @@ public:
     SPMCQueue& operator=(const SPMCQueue&) = delete;
     SPMCQueue& operator=(SPMCQueue&&) = delete;
 
+    struct Slot {
+        std::atomic<uint64_t> version{0};
+        T data;
+    };
+
     class Consumer {
         public:
-            size_t consume(std::span<T> dst);
+            bool pop(T& dst);
 
         private:
             friend class SPMCQueue;
@@ -41,28 +50,29 @@ public:
     }
 
 private:
-    constexpr static size_t buffer_size{4 * 1024};
-    constexpr static size_t wrap_mask{buffer_size - 1};
+    constexpr static size_t buffer_size {4 * 1024};
+    constexpr static size_t wrap_mask {buffer_size - 1};
 
     alignas(64) std::atomic<size_t> writer{0};
-    std::unique_ptr<T[]> buffer = std::make_unique<T[]>(buffer_size);
+    std::unique_ptr<Slot[]> buffer = std::make_unique<Slot[]>(buffer_size);
 
     static_assert(std::popcount(buffer_size) == 1);
-    static_assert(std::is_trivially_destructible_v<T>);
 };
 
-template<typename T>
+template<QueueMsg T>
 void SPMCQueue<T>::push(const T& val) {
     size_t w = writer.load(std::memory_order_acquire);
+    auto& slot = buffer[w & wrap_mask];
 
-    T& s = buffer[writer & wrap_mask];
-    std::memcpy(s, &val, sizeof(T));
+    slot.version.fetch_add(1, std::memory_order_release);
+    slot.data = val;
+    slot.version.fetch_add(1, std::memory_order_release);
 
     writer.store(writer + 1, std::memory_order_release);
 }
 
-template<typename T>
-size_t SPMCQueue<T>::Consumer::consume(std::span<T> dst) {
+template<QueueMsg T>
+bool SPMCQueue<T>::Consumer::pop(T& dst) {
     size_t r = reader.load(std::memory_order_acquire);
     size_t w = queue.writer.load(std::memory_order_acquire);
 
@@ -71,20 +81,24 @@ size_t SPMCQueue<T>::Consumer::consume(std::span<T> dst) {
         std::abort();
     }
 
-    size_t available = w - r;
-    size_t n = std::min(available, dst.size());
+    if (w == r) {
+        return false;
+    }
 
     size_t r_idx = (r & wrap_mask);
-    for (size_t i = 0; i < n; ++i) {
-        dst[i] = queue.buffer[r_idx + i];
+    auto v1 = queue.buffer[r_idx].version.load(std::memory_order_acquire);
+    if (v1 & 1LL) {
+        return false;
     }
 
-    r = reader.load(std::memory_order_acquire);
-    if (w - r > buffer_size) {
-        std::cerr << "Consumer too slow";
-        std::abort();
+    T temp = queue.buffer[r_idx];
+
+    auto v2 = queue.buffer[r_idx].version.load(std::memory_order_acquire);
+    if (v1 != v2) {
+        return false;
     }
 
-    reader.store(r + n, std::memory_order_release);
-    return n;
+    dst = temp;
+    reader.store(r + 1, std::memory_order_release);
+    return true;
 }
