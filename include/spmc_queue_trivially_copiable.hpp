@@ -20,8 +20,9 @@ public:
     SPMCQueue& operator=(const SPMCQueue&) = delete;
     SPMCQueue& operator=(SPMCQueue&&) = delete;
 
+    using VersionT = uint64_t;
     struct Slot {
-        std::atomic<uint64_t> version{0};
+        std::atomic<VersionT> version{0};
         T data;
     };
 
@@ -31,7 +32,10 @@ public:
 
         private:
             friend class SPMCQueue;
-            Consumer(SPMCQueue& q) : queue{q} {}
+            Consumer(SPMCQueue& q)
+            : queue{q},
+              reader{q.writer.load(std::memory_order_acquire)}
+            {}
 
             Consumer(const Consumer&) = delete;
             Consumer(Consumer&) = delete;
@@ -39,7 +43,8 @@ public:
             Consumer& operator=(const Consumer&) = delete;
             Consumer& operator=(Consumer&&) = delete;
 
-            alignas(64) std::atomic<size_t> reader{0};
+            size_t reader{0};
+
             SPMCQueue& queue;
     };
 
@@ -54,7 +59,6 @@ private:
     constexpr static size_t wrap_mask {buffer_size - 1};
 
     alignas(64) std::atomic<size_t> writer{0};
-    alignas(64) std::atomic<size_t> pending_writer{0};
     std::unique_ptr<Slot[]> buffer = std::make_unique<Slot[]>(buffer_size);
 
     static_assert(std::popcount(buffer_size) == 1);
@@ -70,37 +74,36 @@ void SPMCQueue<T>::push(const T& val) {
     slot.version.fetch_add(1, std::memory_order_release);
 
     writer.store(writer + 1, std::memory_order_release);
-    pending_writer.fetch_add(1, std::memory_order_release);
+    writer.fetch_add(1, std::memory_order_release);
+}
+
+[[gnu::noinline]] inline void UNEXPECTED(bool condition) {
+    if (condition) {
+        std::cerr << "Consumer is too slow, aborting now!" << '\n';
+        std::abort();
+    }
 }
 
 template<QueueMsg T>
 bool SPMCQueue<T>::Consumer::pop(T& dst) {
-    size_t r = reader.load(std::memory_order_acquire);
-    size_t w = queue.pending_writer.load(std::memory_order_acquire);
+    size_t r_idx = (reader & wrap_mask);
+    size_t expected_version = 2 * reader;
 
-    if (w - r > buffer_size) {
-        std::cerr << "Consumer too slow";
-        std::abort();
-    }
+    auto& slot = queue.buffer[r_idx];
+    auto v1 = slot.version.load(std::memory_order_acquire);
 
-    if (w == r) {
+    UNEXPECTED(v1 > expected_version);
+    if (v1 < expected_version) {
         return false;
     }
 
-    size_t r_idx = (r & wrap_mask);
-    auto v1 = queue.buffer[r_idx].version.load(std::memory_order_acquire);
-    if (v1 & 1LL) {
-        return false;
-    }
-
-    T temp = queue.buffer[r_idx];
+    T temp = queue.buffer[r_idx].data;
 
     auto v2 = queue.buffer[r_idx].version.load(std::memory_order_acquire);
-    if (v1 != v2) {
-        return false;
-    }
+    UNEXPECTED(v2 != expected_version);
 
     dst = temp;
-    reader.store(r + 1, std::memory_order_release);
+    reader++;
+
     return true;
 }
