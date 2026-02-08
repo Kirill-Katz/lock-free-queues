@@ -54,6 +54,7 @@ private:
     constexpr static size_t wrap_mask {buffer_size - 1};
 
     alignas(64) std::atomic<size_t> writer{0};
+    alignas(64) std::atomic<size_t> pending_writer{0};
     std::unique_ptr<Slot[]> buffer = std::make_unique<Slot[]>(buffer_size);
 
     static_assert(std::popcount(buffer_size) == 1);
@@ -69,12 +70,13 @@ void SPMCQueue<T>::push(const T& val) {
     slot.version.fetch_add(1, std::memory_order_release);
 
     writer.store(writer + 1, std::memory_order_release);
+    pending_writer.fetch_add(1, std::memory_order_release);
 }
 
 template<QueueMsg T>
 bool SPMCQueue<T>::Consumer::pop(T& dst) {
     size_t r = reader.load(std::memory_order_acquire);
-    size_t w = queue.writer.load(std::memory_order_acquire);
+    size_t w = queue.pending_writer.load(std::memory_order_acquire);
 
     if (w - r > buffer_size) {
         std::cerr << "Consumer too slow";
