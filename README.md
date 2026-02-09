@@ -18,4 +18,5 @@ The queue uses seq locks to avoid race conditions on slots, more can be found in
 slot is odd it is being written to so it is not safe to read from, otherwise if the version is even then it is safe to read from. The queue can be used to dispatch order book updates to a set of 
 strategies running on different threads, and it guarantees that the producer can never be blocked by a consumer, as slow consumer std::abort().
 
-**This queue is not portable as it contains a small isolated data race which is considered UB by the C++ standard, but from x86 hardware perspective it is not critical. For more info check [this talk](https://youtu.be/sX2nF1fW7kI?t=3117).** 
+**This queue is not portable as it contains a small isolated data race which is considered UB by the C++ standard, but from x86 hardware perspective it is not critical. For more info check [this talk](https://youtu.be/sX2nF1fW7kI?t=3117), which describes 
+similar code, but for an entirely different SPMC queue design.** 
