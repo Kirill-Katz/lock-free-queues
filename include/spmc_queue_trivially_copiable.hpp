@@ -29,7 +29,7 @@ public:
     SPMCQueue& operator=(SPMCQueue&&) = delete;
 
     using VersionT = uint64_t;
-    struct Slot {
+    struct alignas(64) Slot {
         std::atomic<VersionT> version{0};
         T data;
     };
@@ -38,32 +38,30 @@ public:
         public:
             bool pop(T& dst);
 
+            Consumer(const Consumer&) = delete;
+            Consumer(Consumer&&) = default;
+
+            Consumer& operator=(const Consumer&) = delete;
+            Consumer& operator=(Consumer&&) = default;
+
         private:
             friend class SPMCQueue;
-            Consumer(SPMCQueue& q)
+            explicit Consumer(SPMCQueue& q)
             : queue{q},
               reader{q.writer.load(std::memory_order_acquire)}
             {}
 
-            Consumer(const Consumer&) = delete;
-            Consumer(Consumer&) = delete;
-
-            Consumer& operator=(const Consumer&) = delete;
-            Consumer& operator=(Consumer&&) = delete;
-
-            uint64_t reader{0};
-
+            uint64_t reader;
             SPMCQueue& queue;
     };
 
     void push(const T&);
-
     Consumer make_consumer() {
         return Consumer{*this};
     }
 
 private:
-    constexpr static uint64_t buffer_size {4 * 1024};
+    constexpr static uint64_t buffer_size {64 * 1024};
     constexpr static uint64_t wrap_mask {buffer_size - 1};
 
     alignas(64) std::atomic<uint64_t> writer{0};
@@ -76,12 +74,13 @@ template<QueueMsg T>
 void SPMCQueue<T>::push(const T& val) {
     uint64_t w = writer.load(std::memory_order_acquire);
     auto& slot = buffer[w & wrap_mask];
+    auto slot_ver = slot.version.load(std::memory_order_acquire);
 
-    slot.version.fetch_add(1, std::memory_order_release);
+    slot.version.store(slot_ver + 1, std::memory_order_release);
     slot.data = val;
-    slot.version.fetch_add(1, std::memory_order_release);
+    slot.version.store(slot_ver + 2, std::memory_order_release);
 
-    writer.fetch_add(1, std::memory_order_release);
+    writer.store(w + 1, std::memory_order_release);
 }
 
 template<QueueMsg T>
@@ -92,7 +91,7 @@ bool SPMCQueue<T>::Consumer::pop(T& dst) {
     uint64_t expected_version = 2 * (gen + 1);
 
     auto& slot = queue.buffer[r_idx];
-    auto v1 = slot.version.load(std::memory_order_acquire);
+    auto v1 = slot.version.load(std::memory_order_relaxed);
 
     UNEXPECTED(v1 > expected_version);
     if (v1 < expected_version) {
@@ -103,7 +102,7 @@ bool SPMCQueue<T>::Consumer::pop(T& dst) {
     // this is deliberate and it is not portable, but it does works on x86
     T temp = queue.buffer[r_idx].data;
 
-    auto v2 = queue.buffer[r_idx].version.load(std::memory_order_acquire);
+    auto v2 = slot.version.load(std::memory_order_acquire);
     UNEXPECTED(v2 != expected_version);
 
     dst = temp;
