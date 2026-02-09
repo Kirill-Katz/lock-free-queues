@@ -10,6 +10,14 @@ concept QueueMsg =
     std::is_trivially_copyable_v<T> &&
     std::is_trivially_destructible_v<T>;
 
+// no micro op cache polution
+[[gnu::noinline]] inline void UNEXPECTED(bool condition) {
+    if (condition) {
+        std::cerr << "Consumer is too slow, aborting now!" << '\n';
+        std::abort();
+    }
+}
+
 template<QueueMsg T>
 class SPMCQueue {
 public:
@@ -73,30 +81,26 @@ void SPMCQueue<T>::push(const T& val) {
     slot.data = val;
     slot.version.fetch_add(1, std::memory_order_release);
 
-    writer.store(writer + 1, std::memory_order_release);
     writer.fetch_add(1, std::memory_order_release);
-}
-
-[[gnu::noinline]] inline void UNEXPECTED(bool condition) {
-    if (condition) {
-        std::cerr << "Consumer is too slow, aborting now!" << '\n';
-        std::abort();
-    }
 }
 
 template<QueueMsg T>
 bool SPMCQueue<T>::Consumer::pop(T& dst) {
     size_t r_idx = (reader & wrap_mask);
-    size_t expected_version = 2 * reader;
+    size_t gen = reader >> std::countr_zero(buffer_size);
+
+    size_t expected_version = 2 * (gen + 1);
 
     auto& slot = queue.buffer[r_idx];
     auto v1 = slot.version.load(std::memory_order_acquire);
 
     UNEXPECTED(v1 > expected_version);
-    if (v1 < expected_version) {
+    if (v1 & 1) {
         return false;
     }
 
+    // this is UB, because it is a data-race
+    // this is deliberate and it is not portable, but it does works on x86
     T temp = queue.buffer[r_idx].data;
 
     auto v2 = queue.buffer[r_idx].version.load(std::memory_order_acquire);
