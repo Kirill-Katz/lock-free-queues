@@ -51,7 +51,7 @@ public:
             Consumer& operator=(const Consumer&) = delete;
             Consumer& operator=(Consumer&&) = delete;
 
-            size_t reader{0};
+            uint64_t reader{0};
 
             SPMCQueue& queue;
     };
@@ -63,10 +63,10 @@ public:
     }
 
 private:
-    constexpr static size_t buffer_size {4 * 1024};
-    constexpr static size_t wrap_mask {buffer_size - 1};
+    constexpr static uint64_t buffer_size {4 * 1024};
+    constexpr static uint64_t wrap_mask {buffer_size - 1};
 
-    alignas(64) std::atomic<size_t> writer{0};
+    alignas(64) std::atomic<uint64_t> writer{0};
     std::unique_ptr<Slot[]> buffer = std::make_unique<Slot[]>(buffer_size);
 
     static_assert(std::popcount(buffer_size) == 1);
@@ -74,7 +74,7 @@ private:
 
 template<QueueMsg T>
 void SPMCQueue<T>::push(const T& val) {
-    size_t w = writer.load(std::memory_order_acquire);
+    uint64_t w = writer.load(std::memory_order_acquire);
     auto& slot = buffer[w & wrap_mask];
 
     slot.version.fetch_add(1, std::memory_order_release);
@@ -86,16 +86,16 @@ void SPMCQueue<T>::push(const T& val) {
 
 template<QueueMsg T>
 bool SPMCQueue<T>::Consumer::pop(T& dst) {
-    size_t r_idx = (reader & wrap_mask);
-    size_t gen = reader >> std::countr_zero(buffer_size);
+    uint64_t r_idx = (reader & wrap_mask);
+    uint64_t gen = reader >> std::countr_zero(buffer_size);
 
-    size_t expected_version = 2 * (gen + 1);
+    uint64_t expected_version = 2 * (gen + 1);
 
     auto& slot = queue.buffer[r_idx];
     auto v1 = slot.version.load(std::memory_order_acquire);
 
     UNEXPECTED(v1 > expected_version);
-    if (v1 & 1) {
+    if (v1 < expected_version) {
         return false;
     }
 
