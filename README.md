@@ -12,7 +12,7 @@ Additional care is required for initialization and process coordination, i.e don
 ## SPSC Queue
 A simple generic SPSC Queue the implementation of which can be found in `include/spsc_queue.hpp` as a single header file.
 
-# Latency distribution
+### Latency distribution
 <img width="3000" height="1800" alt="latency" src="https://github.com/user-attachments/assets/3360ef32-95d3-425b-b460-454533f6175f" />
 
 
