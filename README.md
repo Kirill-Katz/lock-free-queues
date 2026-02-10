@@ -39,5 +39,5 @@ similar code, but for an entirely different SPMC queue design.**
 
 
 # Benchmark methodology 
-The results were obtained on a i7-12700h CPU with turbo boost on (4.653Ghz peak) with Hyper Threading turned off and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the rdtscp instruction and then converted into ns by estimating the frequence of rdtscp. The results were obtained on a 16 bytes structs passed between threads throught the queues.
+The results were obtained on a i7-12700h CPU with turbo boost on (4.653Ghz peak) with Hyper Threading turned off and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the rdtscp instruction and then converted into ns by estimating the frequence of rdtscp. The results were obtained on a 16 bytes structs passed between threads throught the queues. The std::threads were pinned to physical cores using `pthread_setaffinity_np()` function.
 
