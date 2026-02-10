@@ -34,7 +34,8 @@ public:
         T data;
     };
 
-    class Consumer {
+    // this shit causes false sharing don't remove the align
+    class alignas(64) Consumer {
         public:
             bool pop(T& dst);
 
@@ -51,7 +52,7 @@ public:
               reader{q.writer.load(std::memory_order_acquire)}
             {}
 
-            uint64_t reader;
+            alignas(64) uint64_t reader;
             SPMCQueue& queue;
     };
 
@@ -61,7 +62,8 @@ public:
     }
 
 private:
-    constexpr static uint64_t buffer_size {64 * 1024};
+    // number of slots that fit in 8MB
+    constexpr static uint64_t buffer_size {8 * 1024 * 1024 / sizeof(Slot)};
     constexpr static uint64_t wrap_mask {buffer_size - 1};
 
     alignas(64) std::atomic<uint64_t> writer{0};
@@ -71,12 +73,12 @@ private:
 };
 
 template<QueueMsg T>
-void SPMCQueue<T>::push(const T& val) {
-    uint64_t w = writer.load(std::memory_order_acquire);
+inline void SPMCQueue<T>::push(const T& val) {
+    uint64_t w = writer.load(std::memory_order_relaxed);
     auto& slot = buffer[w & wrap_mask];
     auto slot_ver = slot.version.load(std::memory_order_acquire);
 
-    slot.version.store(slot_ver + 1, std::memory_order_release);
+    slot.version.store(slot_ver + 1, std::memory_order_relaxed);
     slot.data = val;
     slot.version.store(slot_ver + 2, std::memory_order_release);
 
@@ -84,7 +86,7 @@ void SPMCQueue<T>::push(const T& val) {
 }
 
 template<QueueMsg T>
-bool SPMCQueue<T>::Consumer::pop(T& dst) {
+inline bool SPMCQueue<T>::Consumer::pop(T& dst) {
     uint64_t r_idx = (reader & wrap_mask);
     uint64_t gen = reader >> std::countr_zero(buffer_size);
 
@@ -99,7 +101,7 @@ bool SPMCQueue<T>::Consumer::pop(T& dst) {
     }
 
     // this is UB, because it is a data-race
-    // this is deliberate and it is not portable, but it does works on x86
+    // this is deliberate and it is not portable, but it does work on x86
     T temp = queue.buffer[r_idx].data;
 
     auto v2 = slot.version.load(std::memory_order_acquire);

@@ -4,14 +4,23 @@
 #include <string>
 #include <sys/wait.h>
 #include <cstdint>
+#include <numeric>
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <algorithm>
 #include <x86intrin.h>
 
-pid_t run_perf_report();
-pid_t run_perf_stat();
-void export_prices_csv(const std::vector<uint32_t>& prices, std::string outdir);
+inline void pin_thread_to_cpu(int cpu) {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(cpu, &set);
+
+    int rc = pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+    if (rc != 0) {
+        throw std::runtime_error("pthread_setaffinity_np failed");
+    }
+}
 
 inline uint64_t cycles_to_ns(uint64_t cycles, uint64_t freq) {
     __int128 num = (__int128)cycles * 1'000'000'000 + (freq / 2);
@@ -46,7 +55,8 @@ inline uint64_t calibrate_tsc() {
 
 inline void export_latency_samples_csv(
     std::vector<uint64_t>& samples,
-    const std::string& file_name
+    const std::string& file_name,
+    const std::string& thread_name
 ) {
     if (samples.empty()) {
         return;
@@ -76,16 +86,16 @@ inline void export_latency_samples_csv(
         out << cycles_to_ns(cycles, tsc_freq) << '\n';
     }
 
-    //double elapsed_sec = static_cast<double>(elapsed_cycles) /
-    //                     static_cast<double>(tsc_freq);
+    double elapsed_sec = static_cast<double>(std::accumulate(samples.begin(), samples.end(), 0)) /
+                         static_cast<double>(tsc_freq);
 
-    //double throughput = samples.size() / elapsed_sec;
+    double throughput = samples.size() / elapsed_sec;
 
-    std::cout << "samples: " << samples.size() << '\n';
+    std::cout << thread_name << '\n';
     std::cout << "p50  (ns): " << cycles_to_ns(p50,  tsc_freq) << '\n';
     std::cout << "p95  (ns): " << cycles_to_ns(p95,  tsc_freq) << '\n';
     std::cout << "p99  (ns): " << cycles_to_ns(p99,  tsc_freq) << '\n';
     std::cout << "p999 (ns): " << cycles_to_ns(p999, tsc_freq) << '\n';
-    //std::cout << "throughput (ops/s): " << throughput << '\n';
+    std::cout << "throughput (ops/s): " << throughput << '\n';
 }
 

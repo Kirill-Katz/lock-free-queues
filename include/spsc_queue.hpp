@@ -60,7 +60,7 @@ bool SPSCQueue<T>::try_push(const T& data) {
     static_assert(sizeof(T) <= 64);
     static_assert(alignof(T) <= alignof(Slot));
 
-    size_t writer = writer_.load(std::memory_order_acquire);
+    size_t writer = writer_.load(std::memory_order_relaxed);
     size_t reader = reader_.load(std::memory_order_acquire);
 
     size_t avail = used(writer, reader);
@@ -85,7 +85,7 @@ bool SPSCQueue<T>::try_push(T&& data) {
     static_assert(sizeof(T) <= 64);
     static_assert(alignof(T) <= alignof(Slot));
 
-    size_t writer = writer_.load(std::memory_order_acquire);
+    size_t writer = writer_.load(std::memory_order_relaxed);
     size_t reader = reader_.load(std::memory_order_acquire);
 
     size_t avail = used(writer, reader);
@@ -110,7 +110,7 @@ bool SPSCQueue<T>::try_pop(T& dst) {
     static_assert(sizeof(T) <= 64);
     static_assert(alignof(T) <= alignof(Slot));
 
-    size_t reader = reader_.load(std::memory_order_acquire);
+    size_t reader = reader_.load(std::memory_order_relaxed);
     size_t writer = writer_.load(std::memory_order_acquire);
 
     if (reader == writer) {

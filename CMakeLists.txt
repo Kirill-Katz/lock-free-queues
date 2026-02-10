@@ -7,6 +7,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(benchmark REQUIRED)
 find_package(absl REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DPDK REQUIRED libdpdk)
 
 add_library(spscqueue src/spsc_buffer.cpp)
 target_include_directories(spscqueue PUBLIC include)
@@ -14,7 +16,6 @@ target_include_directories(spscqueue PUBLIC include)
 add_executable(spmc_bench
     src/main.cpp
 )
-
 target_compile_options(spmc_bench PRIVATE -g -fno-omit-frame-pointer -O3 -march=native)
 target_link_libraries(spmc_bench PRIVATE spscqueue benchmark::benchmark)
 target_link_libraries(spmc_bench PRIVATE absl::flat_hash_map)
