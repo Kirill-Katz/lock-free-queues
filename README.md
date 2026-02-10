@@ -12,6 +12,10 @@ Additional care is required for initialization and process coordination, i.e don
 ## SPSC Queue
 A simple generic SPSC Queue the implementation of which can be found in `include/spsc_queue.hpp` as a single header file.
 
+# Latency distribution
+<img width="3000" height="1800" alt="latency" src="https://github.com/user-attachments/assets/3360ef32-95d3-425b-b460-454533f6175f" />
+
+
 ## SPMC Queue for POD messages
 An SPMC queue with a wait-free producer and lock-free consumers the implementation of which can be found at `include/spmc_queue_trivially_copiable.hpp` as a single header file.
 The queue uses seq locks to avoid race conditions on slots, more can be found in this [talk](https://youtu.be/8uAW5FQtcvE?t=2325). The general idea is that each slot has a version and if the version of a
@@ -32,3 +36,8 @@ similar code, but for an entirely different SPMC queue design.**
 
 ### SPMC Latency distribution 3 consumers: 
 <img width="3000" height="1800" alt="latency" src="https://github.com/user-attachments/assets/4d55b30c-f8fb-4c8d-98fd-dd5de698f1aa" />
+
+
+# Benchmark methodology 
+The results were obtained on a i7-12700h CPU with turbo boost on (4.653Ghz peak) with Hyper Threading turned off and the CPU frequency scaling governor set to performance on an idle machine. The machine is an Asus ROG Zephyrus M16 GU603ZM_GU603ZM. The OS is Ubuntu 24.04.3 LTS with an unmodified Linux 6.14.0-37-generic kernel. Compiled with g++ 13.3.0 with -DNDEBUG -O3 -march=native flags. Latency measured using the rdtscp instruction and then converted into ns by estimating the frequence of rdtscp. The results were obtained on a 16 bytes structs passed between threads throught the queues.
+
