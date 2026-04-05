@@ -34,7 +34,8 @@ public:
         T data;
     };
 
-    // this shit causes false sharing don't remove the align
+    // alignas on this class is mandatory otherwise it causes
+    // hard to debug false sharing
     class alignas(64) Consumer {
         public:
             bool pop(T& dst);
