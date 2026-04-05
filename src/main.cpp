@@ -111,7 +111,7 @@ void consumer_spsc(SPSCQueue<BestLvlChange>& queue) {
 
     export_latency_samples_csv(
         samples,
-        "../results/consumer_latency_spsc.csv",
+        "../results/spsc_consumer_latency.csv",
         "consumer_spsc"
     );
 }
@@ -127,7 +127,7 @@ void spmc_bench() {
     SPMCQueue<BestLvlChange> spmc_queue;
 
     auto changes = make_random_changes(samples_count, 1000, 100'000, 10, 100'000);
-    constexpr int thread_count = 3;
+    constexpr int thread_count = 6;
 
     std::vector<std::thread> threads;
     std::vector<SPMCQueue<BestLvlChange>::Consumer> qconsumers;
@@ -191,6 +191,7 @@ void spsc_bench() {
     running.store(false, std::memory_order_release);
     consumer.join();
 
+    std::cout << "Sizeof struct: " << sizeof(BestLvlChange) << '\n';
     export_latency_samples_csv(samples, "../results/push.csv", "producer");
     std::cout << "Done" << '\n';
 
@@ -199,5 +200,6 @@ void spsc_bench() {
 int main() {
     pin_thread_to_cpu(1);
     spmc_bench();
+    spsc_bench();
 }
 

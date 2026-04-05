@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <sys/wait.h>
+#include <unordered_map>
+#include <cstdint>
 #include <cstdint>
 #include <numeric>
 #include <iostream>
@@ -76,14 +78,23 @@ inline void export_latency_samples_csv(
     uint64_t p99  = percentile(0.99);
     uint64_t p999 = percentile(0.999);
 
+    std::unordered_map<uint64_t, uint64_t> histogram;
+    histogram.reserve(samples.size() / 4);
+
+    for (uint64_t cycles : samples) {
+        uint64_t ns = cycles_to_ns(cycles, tsc_freq);
+        ++histogram[ns];
+    }
+
+    // Export
     std::ofstream out(file_name);
     if (!out) {
         std::abort();
     }
 
-    out << "latency_ns\n";
-    for (uint64_t cycles : samples) {
-        out << cycles_to_ns(cycles, tsc_freq) << '\n';
+    out << "latency_ns,count\n";
+    for (const auto& [latency, count] : histogram) {
+        out << latency << "," << count << '\n';
     }
 
     double elapsed_sec = static_cast<double>(std::accumulate(samples.begin(), samples.end(), 0)) /

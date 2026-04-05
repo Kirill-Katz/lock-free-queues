@@ -11,7 +11,7 @@ concept QueueMsg =
     std::is_trivially_destructible_v<T>;
 
 // no micro op cache polution
-[[gnu::noinline]] inline void UNEXPECTED(bool condition) {
+[[gnu::noinline]] static void UNEXPECTED(bool condition) {
     if (condition) {
         std::cerr << "Consumer is too slow, aborting now!" << '\n';
         std::abort();
@@ -100,7 +100,7 @@ inline bool SPMCQueue<T>::Consumer::pop(T& dst) {
         return false;
     }
 
-    // this is UB, because it is a data-race
+    // this is UB, because it is a data-race by the C++ standard
     // this is deliberate and it is not portable, but it does work on x86
     T temp = queue.buffer[r_idx].data;
 
