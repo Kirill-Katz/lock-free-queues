@@ -11,10 +11,14 @@ concept QueueMsg =
     std::is_trivially_destructible_v<T>;
 
 // no micro op cache polution
-[[gnu::noinline]] static void UNEXPECTED(bool condition) {
-    if (condition) {
-        std::cerr << "Consumer is too slow, aborting now!" << '\n';
-        std::abort();
+[[gnu::noinline, gnu::cold]] static void unexpected_abort() {
+    std::cerr << "Consumer is too slow, aborting now!" << '\n';
+    std::abort();
+};
+
+[[gnu::always_inline]] inline void UNEXPECTED(bool condition) {
+    if (condition) [[unlikely]] {
+        unexpected_abort();
     }
 }
 

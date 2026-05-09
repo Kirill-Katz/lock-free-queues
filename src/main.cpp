@@ -1,12 +1,12 @@
 #include <atomic>
+#include <cstdlib>
 #include <iostream>
 #include <thread>
 #include <vector>
 #include <random>
 #include <x86intrin.h>
-#include <absl/container/flat_hash_map.h>
 #include "benchmark_utils.hpp"
-#include "spmc_queue_trivially_copiable.hpp"
+#include "spmc_burst_bench.hpp"
 #include "spsc_queue.hpp"
 
 std::atomic running{true};
@@ -53,38 +53,6 @@ std::vector<BestLvlChange> make_random_changes(
     return v;
 }
 
-void consumer(SPMCQueue<BestLvlChange>::Consumer& queue, uint64_t consumer) {
-    pin_thread_to_cpu(consumer+2);
-
-    BestLvlChange best_lvl_change;
-
-    std::vector<uint64_t> samples(samples_count);
-
-    unsigned aux_end;
-    int i = 0;
-    while (true && i < samples_count) {
-        auto t0 = __rdtscp(&aux_end);
-        bool read = queue.pop(best_lvl_change);
-
-        if (read) {
-            auto t1 = __rdtscp(&aux_end);
-            samples[i++] = t1 - t0;
-        }
-
-        if (!running.load(std::memory_order_relaxed) && !read) break;
-    }
-
-    if (i != samples_count) {
-        throw std::runtime_error("failed to process all messages. Something is seriously wrong");
-    }
-
-    export_latency_samples_csv(
-        samples,
-        "../results/consumer_latency_" + std::to_string(consumer) + ".csv",
-        "consumer_"+ std::to_string(consumer)
-    );
-}
-
 void consumer_spsc(SPSCQueue<BestLvlChange>& queue) {
     pin_thread_to_cpu(2);
 
@@ -123,49 +91,6 @@ void sleep_ns(long ns) {
     nanosleep(&ts, nullptr);
 }
 
-void spmc_bench() {
-    SPMCQueue<BestLvlChange> spmc_queue;
-
-    auto changes = make_random_changes(samples_count, 1000, 100'000, 10, 100'000);
-    constexpr int thread_count = 6;
-
-    std::vector<std::thread> threads;
-    std::vector<SPMCQueue<BestLvlChange>::Consumer> qconsumers;
-    qconsumers.reserve(thread_count);
-
-    for (uint64_t i = 0; i < thread_count; ++i) {
-        qconsumers.push_back(spmc_queue.make_consumer());
-
-        std::thread cthread(consumer, std::ref(qconsumers[i]), i);
-        threads.push_back(std::move(cthread));
-    }
-
-    unsigned aux_start;
-
-    std::vector<uint64_t> samples(samples_count);
-    int i = 0;
-    for (auto& change : changes) {
-        auto t0 = __rdtscp(&aux_start);
-        spmc_queue.push(change);
-        auto t1 = __rdtscp(&aux_start);
-
-        for (int i = 0; i < 3; ++i) {
-            _mm_pause();
-        }
-        samples[i] = t1 - t0;
-        ++i;
-    }
-
-    running.store(false, std::memory_order_release);
-
-    for (int i = 0; i < thread_count; ++i) {
-        threads[i].join();
-    }
-
-    export_latency_samples_csv(samples, "../results/push.csv", "producer");
-    std::cout << "Done" << '\n';
-}
-
 void spsc_bench() {
     running.store(true, std::memory_order_release);
 
@@ -197,9 +122,17 @@ void spsc_bench() {
 
 }
 
-int main() {
-    pin_thread_to_cpu(1);
-    spmc_bench();
-    spsc_bench();
-}
+int main(int argc, char** argv) {
+    int spmc_consumer_count = 2;
+    if (argc > 1) {
+        spmc_consumer_count = std::atoi(argv[1]);
+    }
 
+    pin_thread_to_cpu(1);
+
+    for (int i = 2; i <= 10; ++i) {
+        run_spmc_burst_bench(i);
+    }
+
+    //spsc_bench();
+}

@@ -15,6 +15,7 @@ target_include_directories(spscqueue PUBLIC include)
 
 add_executable(spmc_bench
     src/main.cpp
+    src/spmc_burst_bench.cpp
 )
 target_compile_options(spmc_bench PRIVATE -g -fno-omit-frame-pointer -O3 -march=native)
 target_link_libraries(spmc_bench PRIVATE spscqueue benchmark::benchmark)
