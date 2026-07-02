@@ -23,7 +23,7 @@ strategies running on different threads, and it guarantees that the producer can
 **This queue is not portable as it contains a small isolated data race which is considered UB by the C++ standard, but from an x86 hardware perspective it is not critical. For more info, check [this talk](https://youtu.be/sX2nF1fW7kI?t=3117), which describes
 similar code, but for an entirely different SPMC queue design.**
 ### SPMC Throughput per consumer count:
-<img width="611" height="378" alt="chart" src="https://github.com/user-attachments/assets/aac88471-7ffe-4417-bfa8-921da86a8747" />
+<img width="600" height="371" alt="chart" src="https://github.com/user-attachments/assets/2dde2347-43de-43ce-ae53-093faa4a101b" />
 
 ### SPMC Latency distribution 1 consumer:
 <img width="3000" height="1800" alt="latency" src="https://github.com/user-attachments/assets/4fcd348e-2cad-472b-b0a9-941ccc418304" />
