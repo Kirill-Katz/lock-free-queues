@@ -18,7 +18,7 @@
 namespace {
 
 constexpr std::size_t kTotalMessages = 2'000'000;
-constexpr std::size_t kBurstSize = 32'768;
+constexpr std::size_t kBurstSize = 655'360;
 
 enum class Side : char {
     None = 0,

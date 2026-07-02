@@ -133,6 +133,4 @@ int main(int argc, char** argv) {
     for (int i = 2; i <= 10; ++i) {
         run_spmc_burst_bench(i);
     }
-
-    //spsc_bench();
 }
